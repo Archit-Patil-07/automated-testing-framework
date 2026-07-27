@@ -1,3 +1,5 @@
+![CI](https://github.com/Archit-Patil-07/automated-testing-framework/actions/workflows/ci.yml/badge.svg)
+
 # Automation Exercise Test Framework
 
 An end-to-end test automation framework covering both the UI and public API of
