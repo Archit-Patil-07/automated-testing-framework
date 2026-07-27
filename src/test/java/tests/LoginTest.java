@@ -7,6 +7,7 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 import pages.LoginPage;
+import org.openqa.selenium.chrome.ChromeOptions;
 
 public class LoginTest {
 
@@ -15,6 +16,13 @@ public class LoginTest {
 
     @BeforeClass
     public void setUp() {
+
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--headless=new");           // no visible browser window - required on CI servers
+        options.addArguments("--no-sandbox");               // CI runners run as a restricted user; this permission is needed to launch Chrome at all
+        options.addArguments("--disable-dev-shm-usage");    // CI runners often have very little /dev/shm (shared memory); this tells Chrome not to rely on it
+        options.addArguments("--window-size=1920,1080");
+
         driver = new ChromeDriver();
         driver.manage().window().maximize();
         driver.get("https://automationexercise.com");
