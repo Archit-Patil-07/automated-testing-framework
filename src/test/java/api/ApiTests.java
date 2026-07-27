@@ -66,7 +66,7 @@ public class ApiTests {
         .when()
             .get(BASE_URL + "/productsList")
         .then()
-            .statusCode(200)
+            .statusCode(999)
             .body("responseCode", equalTo(200))
             .body("products", not(empty()));
     }

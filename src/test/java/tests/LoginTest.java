@@ -23,7 +23,7 @@ public class LoginTest {
         options.addArguments("--disable-dev-shm-usage");    // CI runners often have very little /dev/shm (shared memory); this tells Chrome not to rely on it
         options.addArguments("--window-size=1920,1080");
 
-        driver = new ChromeDriver();
+        driver = new ChromeDriver(options);
         driver.manage().window().maximize();
         driver.get("https://automationexercise.com");
         loginPage = new LoginPage(driver);
