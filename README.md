@@ -1,86 +1,74 @@
 ![CI](https://github.com/Archit-Patil-07/automated-testing-framework/actions/workflows/ci.yml/badge.svg)
 
-# Automation Exercise Test Framework
+# Automated Testing Framework
 
-An end-to-end test automation framework covering both the UI and public API of
-[automationexercise.com](https://automationexercise.com), built with Java, Selenium,
-TestNG, and RestAssured, using the Page Object Model and a GitHub Actions CI pipeline.
+A test automation framework built around [automationexercise.com](https://automationexercise.com), covering both its UI and public API. Built as a personal project to get hands-on with the full stack of an SDET role — not just writing test cases, but structuring a real framework, dealing with flaky tests, debugging a live API quirk, and wiring up CI so the suite runs itself on every push.
 
-## What's inside
-- `src/test/java/pages/LoginPage.java` — Page Object for the login page
-- `src/test/java/tests/LoginTest.java` — UI tests: invalid login, valid login
-- `src/test/java/api/ApiTests.java` — 7 API tests against documented, real endpoints
-  (products list, brands list, search product, verify login — including negative/
-  method-validation cases, not just happy paths)
-- `testng.xml` — runs both suites together
-- `.github/workflows/ci.yml` — runs `mvn test` automatically on every push
+## What it actually tests
 
-## Before your first run (10 minutes, do this first)
-1. **Create a real test account**: go to automationexercise.com → "Signup / Login" →
-   "New User Signup!" → fill the form. Takes under a minute.
-2. Open `LoginTest.java` and replace the placeholder email/password in
-   `testValidLoginSucceeds()` with your real account's credentials.
-3. **Verify the locators**: open the login page, right-click the email field →
-   Inspect, and confirm it matches `input[data-qa='login-email']` in
-   `LoginPage.java`. If the site has changed, update the locator — this check is a
-   normal first step, not a sign something's wrong with the framework.
+- **Login flow (UI)** — valid and invalid login attempts through a real Chrome browser, using the Page Object Model so locators live in one place instead of scattered across test files
+- **Products & Brands API** — confirms the core GET endpoints return what they promise, and that hitting them with the wrong HTTP method fails the way it should (405, not a silent 200)
+- **Search API** — valid search terms return results; missing parameters return a proper 400 instead of an unhandled error
+- **Login verification API** — checks missing-credential handling and non-existent-user handling as two distinct failure paths, not one generic error
+- **Data-driven login scenarios** — instead of hardcoding four near-identical test methods, an embedded H2 database holds the test data (missing email, missing password, both missing, invalid user), and a single `@DataProvider`-backed method runs once per row
 
-## How to run
+13 test cases total, run automatically through GitHub Actions on every push.
+
+## Stack
+
+- **Java 17**
+- **Selenium 4** — browser automation
+- **TestNG** — test runner, assertions, data providers
+- **RestAssured** — API testing
+- **H2** — embedded database for data-driven test data (no server install needed)
+- **Maven** — build and dependency management
+- **GitHub Actions** — CI pipeline
+
+## Project structure
+
+src/test/java/
+pages/:
+LoginPage.java # Page Object for the login page
+tests/:
+LoginTest.java # UI tests: invalid + valid login
+api/:
+ApiTests.java # API tests: products, brands, search, login verification
+utils/:
+DatabaseHelper.java # Seeds + reads test data from embedded H2 via JDBC
+testng.xml # Runs both suites together
+.github/workflows/ci.yml # Runs mvn test on every push
+
+
+## Running it locally
+
+Before the first run:
+
+1. Sign up for a real account on automationexercise.com — takes under a minute
+2. Drop those credentials into `testValidLoginSucceeds()` in `LoginTest.java`
+
+Then:
 ```bash
 mvn test
 ```
-This runs all 7 API tests and both UI tests, using `testng.xml`.
 
-To run only the API tests (fast, no browser needed):
+To run just the API layer (fast, no browser needed):
 ```bash
 mvn test -Dtest=api.ApiTests
 ```
 
-## Pushing to GitHub (for the CI pipeline to actually run)
-```bash
-git init
-git add .
-git commit -m "Initial automation framework: UI + API tests, POM, CI"
-git branch -M main
-git remote add origin <your-empty-github-repo-url>
-git push -u origin main
-```
-Once pushed, check the "Actions" tab on your GitHub repo — you'll see the pipeline
-run automatically and report pass/fail. That green checkmark is worth screenshotting
-for your resume/portfolio.
+## A few things worth mentioning about how this was built
 
-## If the UI test fails in GitHub Actions (headless issue)
-GitHub's runners have no visible display, so Chrome needs headless mode there. In
-`LoginTest.java`'s `setUp()`, replace:
+**The API sends JSON with the wrong Content-Type header.** automationexercise.com's API returns valid JSON but labels it `text/html`, which makes RestAssured misread the response entirely. Fixed by explicitly registering a JSON parser for that content type in `ApiTests`'s `@BeforeClass`:
 ```java
-driver = new ChromeDriver();
+RestAssured.registerParser("text/html", Parser.JSON);
 ```
-with:
-```java
-ChromeOptions options = new ChromeOptions();
-options.addArguments("--headless=new");
-driver = new ChromeDriver(options);
-```
-The API tests need no such change — this is itself a good interview talking point on
-*why* API tests are more stable in CI than UI tests.
 
-## Resume line
-> Built an end-to-end test automation framework (Java, Selenium, TestNG, RestAssured)
-> covering the UI and public API of an e-commerce site, using Page Object Model for
-> maintainability and GitHub Actions for CI. Automated 9 test cases spanning login
-> flows and product/search API endpoints, including negative and method-validation
-> scenarios, with results reported via an automated CI pipeline on every commit.
+**Headless Chrome needs more than just `--headless`.** On GitHub's runners there's no display, no sandbox permissions in the usual sense, and very little shared memory — Chrome would exit immediately with a generic "session not created" error until `--no-sandbox` and `--disable-dev-shm-usage` were added alongside `--headless=new`.
 
-## Talking points for the interview
-- **Why POM**: locators live in one place (`LoginPage.java`); if the site changes,
-  you fix it once, not in every test.
-- **Why API + UI together**: API tests are faster and more stable, so backend
-  logic gets validated there; Selenium is reserved for what genuinely needs a
-  browser (rendering, JS behavior, real click-flows).
-- **Why negative tests matter**: `testPostToProductsListIsRejected` and the
-  missing-parameter tests prove the API fails *correctly*, not just that it
-  succeeds when everything is right — this is often the difference testers who
-  only check happy paths miss.
-- **Why CI**: every push automatically re-runs the whole suite — this is
-  regression testing (Part 3 of your prep guide) turned into practice, not just
-  theory.
+**A race condition, not a login bug.** The valid-login test failed intermittently at first — not because login was broken, but because the assertion checked for post-login page content the instant the click fired, before the redirect had actually happened. Fixed with an explicit wait polling for the expected page state instead of checking immediately.
+
+## Possible next steps
+
+- Extend the Page Object layer to cover product search and cart flows on the UI side
+- Add Extent Reports for a nicer visual test report
+- Screenshot capture on test failure via a TestNG listener
