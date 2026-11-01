@@ -18,10 +18,12 @@ public class LoginTest {
     public void setUp() {
 
         ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless=new");           // no visible browser window - required on CI servers
-        options.addArguments("--no-sandbox");               // CI runners run as a restricted user; this permission is needed to launch Chrome at all
-        options.addArguments("--disable-dev-shm-usage");    // CI runners often have very little /dev/shm (shared memory); this tells Chrome not to rely on it
-        options.addArguments("--window-size=1920,1080");
+        if (System.getenv("CI") != null) {   // GitHub Actions sets this automatically
+            options.addArguments("--headless=new");
+            options.addArguments("--no-sandbox");
+            options.addArguments("--disable-dev-shm-usage");
+            options.addArguments("--window-size=1920,1080");
+        }
 
         driver = new ChromeDriver(options);
         driver.manage().window().maximize();
